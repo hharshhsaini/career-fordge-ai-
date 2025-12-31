@@ -4,6 +4,8 @@ An intelligent career guidance platform that helps students discover their ideal
 
 **Built for Microsoft Imagine Cup 2026**
 
+🌐 **Live Demo:** [https://careerfordge.netlify.app](https://careerfordge.netlify.app)
+
 ## 🎯 What it Does
 
 Career Forge analyzes your skills, education, and interests using AI to:
