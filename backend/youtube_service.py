@@ -4,7 +4,9 @@ from googleapiclient.discovery import build
 
 load_dotenv()
 
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") or "AIzaSyCwW3OtJicPyccPQ0CV2RD4qaxb8DMEbJk"
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+if not YOUTUBE_API_KEY:
+    print("WARNING: YOUTUBE_API_KEY not set!")
 
 
 def get_curated_videos(search_query: str) -> list:
