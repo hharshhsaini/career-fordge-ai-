@@ -6,10 +6,10 @@ from youtube_service import get_curated_videos
 
 app = FastAPI(title="Career Forge API", version="2.0.0")
 
-# CORS middleware - allowing frontend at localhost:5173
+# CORS middleware - allowing frontend origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "https://*.netlify.app", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
