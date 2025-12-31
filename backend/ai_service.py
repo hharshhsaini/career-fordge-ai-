@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configure Gemini API
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+GEMINI_KEY = os.getenv("GEMINI_API_KEY") or "AIzaSyBA02q95Xb6E99L84dvHtuWsKDj5g3F3jc"
+genai.configure(api_key=GEMINI_KEY)
 model = genai.GenerativeModel("gemma-3-27b-it")
 
 

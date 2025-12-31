@@ -4,7 +4,7 @@ from googleapiclient.discovery import build
 
 load_dotenv()
 
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") or "AIzaSyCwW3OtJicPyccPQ0CV2RD4qaxb8DMEbJk"
 
 
 def get_curated_videos(search_query: str) -> list:
