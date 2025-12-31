@@ -16,7 +16,7 @@ function App() {
     setResult(null);
 
     try {
-      const response = await fetch('http://localhost:8000/generate-path', {
+      const response = await fetch('https://career-fordge-ai.onrender.com/generate-path', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description }),
