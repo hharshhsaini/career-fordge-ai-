@@ -3,8 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ai_service import generate_precision_roadmap
 from youtube_service import get_curated_videos
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 app = FastAPI(title="Career Forge API", version="2.0.0")
+
+# Thread pool for parallel YouTube API calls
+executor = ThreadPoolExecutor(max_workers=6)
 
 # CORS middleware - allowing frontend origins
 app.add_middleware(
@@ -37,12 +42,21 @@ async def generate_path(profile: UserProfile):
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
     
-    # Enrich each roadmap step with YouTube videos
-    for step in result.get("roadmap", []):
-        youtube_query = step.get("youtube_search_query")
-        if youtube_query:
-            step["video_results"] = get_curated_videos(youtube_query)
+    # Fetch YouTube videos in PARALLEL for all steps
+    loop = asyncio.get_event_loop()
+    roadmap = result.get("roadmap", [])
+    
+    # Create tasks for all YouTube searches
+    async def fetch_videos(step):
+        query = step.get("youtube_search_query")
+        if query:
+            videos = await loop.run_in_executor(executor, get_curated_videos, query)
+            step["video_results"] = videos
         else:
             step["video_results"] = []
+        return step
+    
+    # Run all YouTube fetches in parallel
+    await asyncio.gather(*[fetch_videos(step) for step in roadmap])
     
     return result
