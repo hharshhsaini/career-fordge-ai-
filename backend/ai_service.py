@@ -10,7 +10,7 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_KEY:
     print("WARNING: GEMINI_API_KEY not set!")
 genai.configure(api_key=GEMINI_KEY)
-model = genai.GenerativeModel("gemma-3-27b-it")
+model = genai.GenerativeModel("gemini-2.0-flash")  # Faster model
 
 
 def generate_precision_roadmap(user_profile: str) -> dict:

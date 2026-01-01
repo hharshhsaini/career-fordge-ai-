@@ -28,7 +28,7 @@ def get_curated_videos(search_query: str) -> list:
             type="video",
             videoDuration="long",  # Videos > 20 minutes only
             order="relevance",
-            maxResults=2
+            maxResults=1  # Only 1 result for speed
         ).execute()
         
         videos = []
