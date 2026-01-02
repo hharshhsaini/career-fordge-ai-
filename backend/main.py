@@ -3,13 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ai_service import generate_precision_roadmap
 from services.quiz_service import generate_quiz_openai
-from youtube_service import get_curated_videos
+from services.youtube_service import get_curated_videos
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 app = FastAPI(title="Career Forge API", version="2.0.0")
 
-# Thread pool for parallel YouTube API calls
+# Thread pool for parallel YouTube searches
 executor = ThreadPoolExecutor(max_workers=6)
 
 # CORS middleware - allowing frontend origins
