@@ -1,0 +1,40 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="50%" style="stop-color:#581c87"/>
+      <stop offset="100%" style="stop-color:#0f172a"/>
+    </linearGradient>
+    <linearGradient id="purple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#a855f7"/>
+      <stop offset="100%" style="stop-color:#6366f1"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  
+  <!-- Decorative circles -->
+  <circle cx="100" cy="100" r="200" fill="#a855f7" opacity="0.1"/>
+  <circle cx="1100" cy="530" r="250" fill="#6366f1" opacity="0.1"/>
+  
+  <!-- Compass Icon -->
+  <g transform="translate(540, 180)">
+    <circle cx="60" cy="60" r="55" fill="none" stroke="#a855f7" stroke-width="4"/>
+    <path d="M60 20 L70 60 L60 100 L50 60 Z" fill="#a855f7"/>
+    <path d="M20 60 L60 50 L100 60 L60 70 Z" fill="#6366f1"/>
+    <circle cx="60" cy="60" r="8" fill="#fbbf24"/>
+  </g>
+  
+  <!-- Title -->
+  <text x="600" y="350" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="white" text-anchor="middle">Career Forge</text>
+  
+  <!-- Subtitle -->
+  <text x="600" y="420" font-family="Arial, sans-serif" font-size="32" fill="#c4b5fd" text-anchor="middle">AI-Powered Career Navigator</text>
+  
+  <!-- Features -->
+  <text x="600" y="500" font-family="Arial, sans-serif" font-size="24" fill="#a78bfa" text-anchor="middle">Personalized Learning Roadmaps • Curated Resources • Progress Tracking</text>
+  
+  <!-- Author -->
+  <text x="600" y="580" font-family="Arial, sans-serif" font-size="18" fill="#7c3aed" text-anchor="middle">Made by Harsh Saini</text>
+</svg>

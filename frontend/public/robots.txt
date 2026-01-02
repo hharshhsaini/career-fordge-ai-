@@ -1,0 +1,11 @@
+# Career Forge - AI Career Navigator
+# https://careerfordge.netlify.app
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://careerfordge.netlify.app/sitemap.xml
+
+# Crawl-delay for politeness
+Crawl-delay: 1
