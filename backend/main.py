@@ -43,7 +43,7 @@ async def generate_path(profile: UserProfile):
     """
     # Generate career roadmap from AI
     result = generate_precision_roadmap(profile.description)
-    
+
     # Check for errors
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
@@ -51,7 +51,7 @@ async def generate_path(profile: UserProfile):
     # Fetch YouTube videos in PARALLEL for all steps
     loop = asyncio.get_event_loop()
     roadmap = result.get("roadmap", [])
-    
+
     # Create tasks for all YouTube searches
     async def fetch_videos(step):
         query = step.get("youtube_search_query")
