@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Compass, Loader2, Sparkles, TrendingUp, Clock, Download, RefreshCw, BarChart3 } from 'lucide-react';
+import { Compass, Sparkles, TrendingUp, Clock, Download, RefreshCw, BarChart3 } from 'lucide-react';
 import RoadmapCard from './components/RoadmapCard';
 import ProgressChart from './components/ProgressChart';
+import LoadingAnimation from './components/LoadingAnimation';
 import jsPDF from 'jspdf';
 
 const POPULAR_CAREERS = [
@@ -205,6 +206,9 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Full Screen Loading Animation */}
+      {isLoading && <LoadingAnimation />}
+      
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <header className="text-center mb-10">
@@ -242,17 +246,8 @@ function App() {
                 disabled={isLoading || !description.trim()}
                 className="mt-4 w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-purple-600/50 disabled:to-indigo-600/50 disabled:cursor-not-allowed text-white py-4 px-6 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-lg shadow-lg shadow-purple-500/25"
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Crafting your personalized roadmap...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5" />
-                    Generate My Career Path
-                  </>
-                )}
+                <Sparkles className="w-5 h-5" />
+                Generate My Career Path
               </button>
             </div>
 
