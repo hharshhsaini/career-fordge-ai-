@@ -91,14 +91,6 @@ cp .env.example .env
 cd frontend
 npm install
 ```
-
-### 4. Get API Keys
-
-| API | Link |
-|-----|------|
-| Gemini API | https://aistudio.google.com/app/apikey |
-| YouTube API | https://console.cloud.google.com/apis/credentials |
-
 ### 5. Run the Application
 
 **Terminal 1 - Backend:**
