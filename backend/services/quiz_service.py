@@ -5,64 +5,43 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# DeepSeek on Azure configuration
-DEEPSEEK_ENDPOINT = os.getenv("DEEPSEEK_ENDPOINT", "https://career-fordge-resource.cognitiveservices.azure.com/")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_DEPLOYMENT = os.getenv("DEEPSEEK_DEPLOYMENT", "DeepSeek-V3.2")
-DEEPSEEK_API_VERSION = os.getenv("DEEPSEEK_API_VERSION", "2024-05-01-preview")
+# GPT-4.1-nano on Azure for fast quiz generation
+QUIZ_ENDPOINT = os.getenv("QUIZ_ENDPOINT", "https://career-fordge-resource.cognitiveservices.azure.com/")
+QUIZ_API_KEY = os.getenv("QUIZ_API_KEY")
+QUIZ_DEPLOYMENT = os.getenv("QUIZ_DEPLOYMENT", "gpt-4.1-nano")
+QUIZ_API_VERSION = os.getenv("QUIZ_API_VERSION", "2024-05-01-preview")
 
-if not DEEPSEEK_API_KEY:
-    print("WARNING: DEEPSEEK_API_KEY not set!")
+if not QUIZ_API_KEY:
+    print("WARNING: QUIZ_API_KEY not set!")
 
 client = AzureOpenAI(
-    azure_endpoint=DEEPSEEK_ENDPOINT,
-    api_key=DEEPSEEK_API_KEY,
-    api_version=DEEPSEEK_API_VERSION
+    azure_endpoint=QUIZ_ENDPOINT,
+    api_key=QUIZ_API_KEY,
+    api_version=QUIZ_API_VERSION
 )
 
 
 def generate_quiz_openai(topic: str, step_name: str) -> dict:
     """
-    Generate a technical quiz with coding and concept questions using DeepSeek on Azure.
+    Generate a technical quiz using GPT-4.1-nano on Azure (fast).
     """
-    prompt = f"""You are a technical interview quiz generator for developers.
-
-Generate 15 multiple choice questions to test REAL technical knowledge of: {step_name}
+    prompt = f"""Generate 15 technical MCQ questions for: {step_name}
 Topic: {topic}
 
-CRITICAL REQUIREMENTS:
-1. Questions MUST be technical and specific to the topic
-2. Include these question types:
-   - Code output questions (What will this code print?)
-   - Concept questions (What is the purpose of X?)
-   - Best practice questions (Which approach is recommended for Y?)
-   - Debugging questions (What's wrong with this code?)
-   - Comparison questions (What's the difference between A and B?)
-3. For coding questions, include actual code snippets in the question
-4. Each question must have exactly 4 options (A, B, C, D)
-5. Only ONE option should be correct
-6. Explanation must teach WHY the answer is correct
-7. Difficulty mix: 5 easy, 6 medium, 4 hard
+Requirements:
+- Include code output, concept, debugging, and comparison questions
+- 4 options (A,B,C,D) per question, only 1 correct
+- Mix: 5 easy, 6 medium, 4 hard
+- Include code snippets where relevant
 
-EXAMPLE GOOD QUESTIONS:
-- "What will console.log(typeof null) output in JavaScript?" 
-- "In React, what hook is used to perform side effects?"
-- "What is the time complexity of binary search?"
-- "Which SQL keyword is used to filter grouped results?"
-
-DO NOT ask generic questions like "Why is learning important?" or "What is the best approach to learn?"
-
-Respond with valid JSON only:
-
-{{"questions": [{{"id": 1,"question": "Technical question with code if applicable?","options": {{"A": "Option A","B": "Option B","C": "Option C","D": "Option D"}},"correct": "A","explanation": "Technical explanation of why A is correct","difficulty": "easy"}}]}}
-
-Generate exactly 15 technical questions."""
+Return JSON only:
+{{"questions":[{{"id":1,"question":"Question?","options":{{"A":"","B":"","C":"","D":""}},"correct":"A","explanation":"Why","difficulty":"easy"}}]}}"""
 
     try:
         response = client.chat.completions.create(
-            model=DEEPSEEK_DEPLOYMENT,
+            model=QUIZ_DEPLOYMENT,
             messages=[
-                {"role": "system", "content": "You are a senior technical interviewer. Generate challenging, real-world technical questions that test actual coding knowledge and concepts. Always include code snippets where relevant. Respond with valid JSON only."},
+                {"role": "system", "content": "Technical quiz generator. Return valid JSON only."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=4000
@@ -70,7 +49,7 @@ Generate exactly 15 technical questions."""
         
         response_text = response.choices[0].message.content.strip()
         
-        # Clean markdown formatting if present
+        # Clean markdown formatting
         if response_text.startswith("```json"):
             response_text = response_text[7:]
         if response_text.startswith("```"):
@@ -78,10 +57,8 @@ Generate exactly 15 technical questions."""
         if response_text.endswith("```"):
             response_text = response_text[:-3]
         
-        response_text = response_text.strip()
-        result = json.loads(response_text)
+        result = json.loads(response_text.strip())
         
-        # Validate we got questions
         if "questions" in result and len(result["questions"]) > 0:
             return result
         else:
@@ -89,7 +66,7 @@ Generate exactly 15 technical questions."""
     
     except json.JSONDecodeError as e:
         print(f"JSON decode error: {e}")
-        return {"error": f"Failed to parse quiz response. Please try again."}
+        return {"error": "Failed to parse quiz response. Please try again."}
     except Exception as e:
-        print(f"DeepSeek quiz generation error: {e}")
+        print(f"Quiz generation error: {e}")
         return {"error": f"Quiz service error: {str(e)}. Please try again later."}
