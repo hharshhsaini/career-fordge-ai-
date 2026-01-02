@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ai_service import generate_precision_roadmap
+from services.quiz_service import generate_quiz_openai
 from youtube_service import get_curated_videos
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -23,6 +24,11 @@ app.add_middleware(
 
 class UserProfile(BaseModel):
     description: str
+
+
+class QuizRequest(BaseModel):
+    topic: str
+    step_name: str
 
 
 @app.get("/")
@@ -58,5 +64,18 @@ async def generate_path(profile: UserProfile):
     
     # Run all YouTube fetches in parallel
     await asyncio.gather(*[fetch_videos(step) for step in roadmap])
+    
+    return result
+
+
+@app.post("/generate-quiz")
+async def generate_quiz_endpoint(request: QuizRequest):
+    """
+    Generate a quiz for a specific learning step using OpenAI.
+    """
+    result = generate_quiz_openai(request.topic, request.step_name)
+    
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
     
     return result

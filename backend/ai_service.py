@@ -96,3 +96,65 @@ def get_fallback_roadmap(user_profile: str) -> dict:
                 {"step_name": "Step 6: System Design & Interview Prep", "official_docs_url": None, "paid_course_recommendation": "Master the Coding Interview by Andrei Neagoie on Udemy", "youtube_search_query": "Full stack developer interview preparation system design"}
             ]
         }
+
+
+def generate_quiz(topic: str, step_name: str) -> dict:
+    """
+    Generate a quiz with 10 multiple choice questions for a learning step.
+    """
+    prompt = f"""You are a quiz generator for Career Forge learning platform.
+
+Generate exactly 10 multiple choice questions to test knowledge of: {step_name}
+Topic area: {topic}
+
+RULES:
+1. Questions should test practical understanding, not just memorization
+2. Each question must have exactly 4 options (A, B, C, D)
+3. Only ONE option should be correct
+4. Include a brief explanation for the correct answer
+5. Mix difficulty: 4 easy, 4 medium, 2 hard questions
+
+Respond with RAW JSON only. No markdown, no code blocks.
+
+{{"questions": [{{"id": 1,"question": "Question text here?","options": {{"A": "Option A text","B": "Option B text","C": "Option C text","D": "Option D text"}},"correct": "A","explanation": "Brief explanation why A is correct","difficulty": "easy"}},{{"id": 2,"question": "Second question?","options": {{"A": "Option A","B": "Option B","C": "Option C","D": "Option D"}},"correct": "B","explanation": "Explanation here","difficulty": "medium"}}]}}
+
+Generate all 10 questions following this exact format."""
+
+    try:
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+        
+        # Clean markdown formatting if present
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        
+        response_text = response_text.strip()
+        return json.loads(response_text)
+    
+    except json.JSONDecodeError:
+        return get_fallback_quiz(topic)
+    except Exception as e:
+        print(f"Quiz generation error: {e}")
+        return get_fallback_quiz(topic)
+
+
+def get_fallback_quiz(topic: str) -> dict:
+    """Return fallback quiz when API fails."""
+    return {
+        "questions": [
+            {"id": 1, "question": f"What is the primary purpose of learning {topic}?", "options": {"A": "To build practical skills", "B": "Just for fun", "C": "No real purpose", "D": "To waste time"}, "correct": "A", "explanation": "Learning any technical skill is primarily about building practical, applicable skills.", "difficulty": "easy"},
+            {"id": 2, "question": "Which approach is best for learning new technical concepts?", "options": {"A": "Only reading theory", "B": "Hands-on practice with projects", "C": "Watching without practicing", "D": "Memorizing everything"}, "correct": "B", "explanation": "Hands-on practice with real projects is the most effective way to learn technical skills.", "difficulty": "easy"},
+            {"id": 3, "question": "What should you do when you encounter an error while coding?", "options": {"A": "Give up immediately", "B": "Read the error message and debug", "C": "Ignore it", "D": "Delete all code"}, "correct": "B", "explanation": "Reading error messages carefully and debugging is essential for problem-solving.", "difficulty": "easy"},
+            {"id": 4, "question": "Why is documentation important in programming?", "options": {"A": "It's not important", "B": "Only for beginners", "C": "Helps understand APIs and features", "D": "Just for decoration"}, "correct": "C", "explanation": "Documentation is crucial for understanding how to use libraries, APIs, and language features correctly.", "difficulty": "easy"},
+            {"id": 5, "question": "What is the benefit of version control systems like Git?", "options": {"A": "Makes code run faster", "B": "Tracks changes and enables collaboration", "C": "Automatically fixes bugs", "D": "Not useful for developers"}, "correct": "B", "explanation": "Git tracks code changes over time and enables team collaboration effectively.", "difficulty": "medium"},
+            {"id": 6, "question": "Which is a good practice when writing code?", "options": {"A": "Write everything in one file", "B": "Use meaningful variable names", "C": "Never add comments", "D": "Copy-paste without understanding"}, "correct": "B", "explanation": "Meaningful variable names make code readable and maintainable.", "difficulty": "medium"},
+            {"id": 7, "question": "What is debugging?", "options": {"A": "Adding new features", "B": "Finding and fixing errors in code", "C": "Deleting code", "D": "Writing documentation"}, "correct": "B", "explanation": "Debugging is the process of identifying and resolving errors or bugs in code.", "difficulty": "medium"},
+            {"id": 8, "question": "Why should you break down large problems into smaller parts?", "options": {"A": "It's not necessary", "B": "Makes problems easier to solve", "C": "Takes more time", "D": "Only experts do this"}, "correct": "B", "explanation": "Breaking down problems makes them more manageable and easier to solve step by step.", "difficulty": "medium"},
+            {"id": 9, "question": "What is the importance of testing your code?", "options": {"A": "Wastes time", "B": "Ensures code works correctly", "C": "Not needed for small projects", "D": "Only for production"}, "correct": "B", "explanation": "Testing ensures your code works as expected and helps catch bugs early.", "difficulty": "hard"},
+            {"id": 10, "question": "What makes a developer stand out in their career?", "options": {"A": "Only technical skills", "B": "Continuous learning and problem-solving", "C": "Working alone always", "D": "Avoiding challenges"}, "correct": "B", "explanation": "Continuous learning, adaptability, and strong problem-solving skills are key to career growth.", "difficulty": "hard"}
+        ]
+    }

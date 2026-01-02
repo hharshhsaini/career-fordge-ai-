@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Compass, Loader2, Sparkles, TrendingUp, Clock, Download, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Compass, Loader2, Sparkles, TrendingUp, Clock, Download, RefreshCw, BarChart3 } from 'lucide-react';
 import RoadmapCard from './components/RoadmapCard';
+import ProgressChart from './components/ProgressChart';
+import jsPDF from 'jspdf';
 
 const POPULAR_CAREERS = [
   { label: "Data Analyst", query: "I want to become a Data Analyst. I know basic Excel and am learning Python." },
@@ -16,6 +18,24 @@ function App() {
   const [result, setResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [completedSteps, setCompletedSteps] = useState({});
+  const [showProgress, setShowProgress] = useState(false);
+  const roadmapRef = useRef(null);
+
+  // Load saved progress from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('careerforge_progress');
+    if (saved) {
+      setCompletedSteps(JSON.parse(saved));
+    }
+  }, []);
+
+  // Save progress to localStorage
+  useEffect(() => {
+    if (Object.keys(completedSteps).length > 0) {
+      localStorage.setItem('careerforge_progress', JSON.stringify(completedSteps));
+    }
+  }, [completedSteps]);
 
   const handleSubmit = async (customQuery = null) => {
     const query = customQuery || description;
@@ -26,7 +46,12 @@ function App() {
     setResult(null);
 
     try {
-      const response = await fetch('https://career-fordge-ai.onrender.com/generate-path', {
+      // Use localhost for development, Render for production
+      const apiUrl = window.location.hostname === 'localhost' 
+        ? 'http://localhost:8000' 
+        : 'https://career-fordge-ai.onrender.com';
+      
+      const response = await fetch(`${apiUrl}/generate-path`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description: query }),
@@ -38,11 +63,37 @@ function App() {
 
       const data = await response.json();
       setResult(data);
+      
+      // Initialize progress for this career
+      const careerKey = data.career_role?.replace(/\s+/g, '_').toLowerCase();
+      if (careerKey && !completedSteps[careerKey]) {
+        setCompletedSteps(prev => ({ ...prev, [careerKey]: [] }));
+      }
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleStepComplete = (stepIndex, isComplete) => {
+    if (!result) return;
+    const careerKey = result.career_role?.replace(/\s+/g, '_').toLowerCase();
+    
+    setCompletedSteps(prev => {
+      const current = prev[careerKey] || [];
+      if (isComplete) {
+        return { ...prev, [careerKey]: [...new Set([...current, stepIndex])] };
+      } else {
+        return { ...prev, [careerKey]: current.filter(i => i !== stepIndex) };
+      }
+    });
+  };
+
+  const getCompletedCount = () => {
+    if (!result) return 0;
+    const careerKey = result.career_role?.replace(/\s+/g, '_').toLowerCase();
+    return completedSteps[careerKey]?.length || 0;
   };
 
   const handlePopularClick = (query) => {
@@ -54,9 +105,103 @@ function App() {
     setResult(null);
     setDescription('');
     setError(null);
+    setShowProgress(false);
+  };
+
+  const handleDownloadPDF = () => {
+    if (!result) return;
+    
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      let yPos = 20;
+      
+      // Title
+      pdf.setFontSize(24);
+      pdf.setTextColor(88, 28, 135); // Purple
+      pdf.text('Career Forge - Learning Roadmap', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 15;
+      
+      // Career Role
+      pdf.setFontSize(18);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(`Career: ${result.career_role}`, 15, yPos);
+      yPos += 10;
+      
+      // Summary
+      pdf.setFontSize(11);
+      pdf.setTextColor(80, 80, 80);
+      const summaryLines = pdf.splitTextToSize(result.summary || '', pageWidth - 30);
+      pdf.text(summaryLines, 15, yPos);
+      yPos += summaryLines.length * 6 + 10;
+      
+      // Roadmap Steps
+      pdf.setFontSize(14);
+      pdf.setTextColor(88, 28, 135);
+      pdf.text('Learning Roadmap:', 15, yPos);
+      yPos += 10;
+      
+      result.roadmap?.forEach((step, index) => {
+        // Check if we need a new page
+        if (yPos > 260) {
+          pdf.addPage();
+          yPos = 20;
+        }
+        
+        // Step header
+        pdf.setFontSize(12);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(`${index + 1}. ${step.step_name}`, 15, yPos);
+        yPos += 7;
+        
+        // Official docs
+        if (step.official_docs_url) {
+          pdf.setFontSize(10);
+          pdf.setTextColor(59, 130, 246); // Blue
+          pdf.text(`   📚 Docs: ${step.official_docs_url}`, 15, yPos);
+          yPos += 6;
+        }
+        
+        // Paid course
+        if (step.paid_course_recommendation) {
+          pdf.setFontSize(10);
+          pdf.setTextColor(34, 197, 94); // Green
+          const courseLines = pdf.splitTextToSize(`   🎓 Course: ${step.paid_course_recommendation}`, pageWidth - 35);
+          pdf.text(courseLines, 15, yPos);
+          yPos += courseLines.length * 5;
+        }
+        
+        // YouTube videos
+        if (step.video_results?.length > 0) {
+          pdf.setFontSize(10);
+          pdf.setTextColor(239, 68, 68); // Red
+          step.video_results.forEach(video => {
+            const videoLines = pdf.splitTextToSize(`   ▶️ ${video.title}`, pageWidth - 35);
+            pdf.text(videoLines, 15, yPos);
+            yPos += videoLines.length * 5;
+            pdf.setTextColor(100, 100, 100);
+            pdf.text(`      ${video.url}`, 15, yPos);
+            yPos += 5;
+          });
+        }
+        
+        yPos += 8;
+      });
+      
+      // Footer
+      pdf.setFontSize(9);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text('Generated by Career Forge - Made by Harsh Saini', pageWidth / 2, 285, { align: 'center' });
+      
+      pdf.save(`${result.career_role?.replace(/\s+/g, '_') || 'career'}_roadmap.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      alert('Failed to generate PDF. Please try again.');
+    }
   };
 
   const totalWeeks = result?.roadmap?.length ? result.roadmap.length * 4 : 0;
+  const progressPercent = result?.roadmap ? Math.round((getCompletedCount() / result.roadmap.length) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -146,17 +291,17 @@ function App() {
               </div>
               <div className="bg-white/5 rounded-xl p-4 border border-purple-500/20 text-center">
                 <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <Clock className="w-5 h-5 text-orange-400" />
+                  <BarChart3 className="w-5 h-5 text-orange-400" />
                 </div>
-                <h3 className="text-white font-medium mb-1">Step-by-Step Path</h3>
-                <p className="text-purple-300 text-sm">Clear roadmap from beginner to job-ready</p>
+                <h3 className="text-white font-medium mb-1">Track Progress</h3>
+                <p className="text-purple-300 text-sm">Mark completed steps and visualize your learning journey</p>
               </div>
             </div>
           </>
         ) : (
           <>
             {/* Results Section */}
-            <div className="space-y-6">
+            <div className="space-y-6" ref={roadmapRef}>
               {/* Career Summary Card */}
               <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
@@ -179,12 +324,16 @@ function App() {
                       <TrendingUp className="w-4 h-4 text-purple-200" />
                       <span className="text-sm">6 learning milestones</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-purple-200" />
+                      <span className="text-sm">{progressPercent}% completed</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <button
                   onClick={handleReset}
                   className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-all"
@@ -192,18 +341,51 @@ function App() {
                   <RefreshCw className="w-4 h-4" />
                   New Search
                 </button>
+                <button
+                  onClick={handleDownloadPDF}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white transition-all"
+                >
+                  <Download className="w-4 h-4" />
+                  Download PDF
+                </button>
+                <button
+                  onClick={() => setShowProgress(!showProgress)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition-all"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  {showProgress ? 'Hide' : 'Show'} Progress
+                </button>
               </div>
 
-              {/* Progress Overview */}
+              {/* Progress Chart */}
+              {showProgress && (
+                <ProgressChart 
+                  totalSteps={result.roadmap?.length || 6} 
+                  completedSteps={getCompletedCount()}
+                  careerRole={result.career_role}
+                />
+              )}
+
+              {/* Progress Overview Bar */}
               <div className="bg-white/5 rounded-xl p-4 border border-purple-500/20">
-                <p className="text-purple-300 text-sm mb-3">Your Learning Journey</p>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-purple-300 text-sm">Your Learning Progress</p>
+                  <p className="text-white font-medium">{getCompletedCount()}/{result.roadmap?.length || 6} steps</p>
+                </div>
+                <div className="w-full bg-white/10 rounded-full h-3">
+                  <div 
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all duration-500"
+                    style={{ width: `${progressPercent}%` }}
+                  ></div>
+                </div>
+                <div className="flex justify-between mt-2">
                   {result.roadmap?.map((_, idx) => (
-                    <div key={idx} className="flex-1">
-                      <div className={`h-2 rounded-full ${idx < 2 ? 'bg-green-500' : idx < 4 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-                      <p className="text-xs text-purple-400 mt-1 text-center">
-                        {idx < 2 ? 'Beginner' : idx < 4 ? 'Intermediate' : 'Advanced'}
-                      </p>
+                    <div key={idx} className="flex flex-col items-center">
+                      <div className={`w-3 h-3 rounded-full ${
+                        completedSteps[result.career_role?.replace(/\s+/g, '_').toLowerCase()]?.includes(idx) 
+                          ? 'bg-green-500' 
+                          : 'bg-white/20'
+                      }`}></div>
                     </div>
                   ))}
                 </div>
@@ -216,7 +398,13 @@ function App() {
                   Your Learning Roadmap
                 </h3>
                 {result.roadmap?.map((step, index) => (
-                  <RoadmapCard key={index} step={step} index={index} />
+                  <RoadmapCard 
+                    key={index} 
+                    step={step} 
+                    index={index}
+                    isCompleted={completedSteps[result.career_role?.replace(/\s+/g, '_').toLowerCase()]?.includes(index)}
+                    onToggleComplete={(isComplete) => handleStepComplete(index, isComplete)}
+                  />
                 ))}
               </div>
             </div>
