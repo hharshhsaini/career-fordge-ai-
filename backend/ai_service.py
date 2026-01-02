@@ -13,10 +13,12 @@ AZURE_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "career_fordge")
 if not AZURE_API_KEY:
     print("WARNING: AZURE_OPENAI_API_KEY not set!")
 
+AZURE_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
+
 client = AzureOpenAI(
     azure_endpoint=AZURE_ENDPOINT,
     api_key=AZURE_API_KEY,
-    api_version="2024-02-15-preview"
+    api_version=AZURE_API_VERSION
 )
 
 
@@ -47,8 +49,7 @@ Respond with RAW JSON only. No markdown, no code blocks, no explanation.
                 {"role": "system", "content": "You are a career advisor AI. Always respond with valid JSON only. Analyze user skills carefully and recommend the most suitable career - not always Full Stack Developer."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7,
-            max_tokens=2000
+            max_completion_tokens=2000
         )
         
         response_text = response.choices[0].message.content.strip()
