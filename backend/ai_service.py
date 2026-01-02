@@ -1,21 +1,28 @@
 import os
 import json
-import google.generativeai as genai
+from openai import AzureOpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configure Gemini API
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_KEY:
-    print("WARNING: GEMINI_API_KEY not set!")
-genai.configure(api_key=GEMINI_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")  # Faster model
+# Configure Azure OpenAI
+AZURE_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+AZURE_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+AZURE_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "career_fordge")
+
+if not AZURE_API_KEY:
+    print("WARNING: AZURE_OPENAI_API_KEY not set!")
+
+client = AzureOpenAI(
+    azure_endpoint=AZURE_ENDPOINT,
+    api_key=AZURE_API_KEY,
+    api_version="2024-02-15-preview"
+)
 
 
 def generate_precision_roadmap(user_profile: str) -> dict:
     """
-    Generate a precision career roadmap with verified, high-quality resources.
+    Generate a precision career roadmap using Azure OpenAI GPT-4.
     """
     prompt = f"""You are Career Forge, a precision career advisor. Analyze the user profile and provide EXACT, VERIFIED resources.
 
@@ -27,14 +34,24 @@ STRICT RULES:
 3. paid_course_recommendation must be a REAL, FAMOUS course that actually exists on Udemy/Coursera
 4. youtube_search_query must be SPECIFIC enough to find full courses/playlists (not shorts or random videos)
 5. Provide exactly 6 steps covering Beginner to Advanced
+6. Choose the BEST career based on user's skills and interests - NOT always Full Stack Developer
 
 Respond with RAW JSON only. No markdown, no code blocks, no explanation.
 
 {{"career_role": "Exact Job Title","summary": "2-3 sentences explaining why this career fits the user","roadmap": [{{"step_name": "Step 1: Foundation Topic Name","official_docs_url": "https://exact-official-docs-url.com or null if unsure","paid_course_recommendation": "Exact Course Name by Instructor Name on Platform","youtube_search_query": "very specific full course tutorial query 2024"}},{{"step_name": "Step 2: Next Topic","official_docs_url": "URL or null","paid_course_recommendation": "Course Name by Instructor on Platform","youtube_search_query": "specific search query"}},{{"step_name": "Step 3: Intermediate Topic","official_docs_url": "URL or null","paid_course_recommendation": "Course Name","youtube_search_query": "query"}},{{"step_name": "Step 4: Intermediate Topic 2","official_docs_url": "URL or null","paid_course_recommendation": "Course Name","youtube_search_query": "query"}},{{"step_name": "Step 5: Advanced Topic","official_docs_url": "URL or null","paid_course_recommendation": "Course Name","youtube_search_query": "query"}},{{"step_name": "Step 6: Projects & Interview Prep","official_docs_url": "URL or null","paid_course_recommendation": "Course Name","youtube_search_query": "career role interview preparation projects"}}]}}"""
 
     try:
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
+        response = client.chat.completions.create(
+            model=AZURE_DEPLOYMENT,
+            messages=[
+                {"role": "system", "content": "You are a career advisor AI. Always respond with valid JSON only. Analyze user skills carefully and recommend the most suitable career - not always Full Stack Developer."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=2000
+        )
+        
+        response_text = response.choices[0].message.content.strip()
         
         # Clean markdown formatting if present
         if response_text.startswith("```json"):
@@ -47,9 +64,11 @@ Respond with RAW JSON only. No markdown, no code blocks, no explanation.
         response_text = response_text.strip()
         return json.loads(response_text)
     
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
         return get_fallback_roadmap(user_profile)
-    except Exception:
+    except Exception as e:
+        print(f"Azure OpenAI error: {e}")
         return get_fallback_roadmap(user_profile)
 
 
@@ -57,7 +76,7 @@ def get_fallback_roadmap(user_profile: str) -> dict:
     """Return verified fallback data when API fails."""
     profile_lower = user_profile.lower()
     
-    if any(word in profile_lower for word in ["data", "analysis", "excel", "statistics", "numbers"]):
+    if any(word in profile_lower for word in ["data", "analysis", "excel", "statistics", "numbers", "analyst"]):
         return {
             "career_role": "Data Analyst",
             "summary": "Data Analyst combines analytical thinking with business impact. Your interest in data and numbers makes this an ideal path with strong job demand.",
@@ -70,7 +89,20 @@ def get_fallback_roadmap(user_profile: str) -> dict:
                 {"step_name": "Step 6: Power BI & Portfolio Projects", "official_docs_url": "https://learn.microsoft.com/en-us/power-bi/", "paid_course_recommendation": "Microsoft Power BI Desktop for Business Intelligence by Maven Analytics on Udemy", "youtube_search_query": "Data Analyst interview preparation portfolio projects"}
             ]
         }
-    elif any(word in profile_lower for word in ["web", "frontend", "html", "css", "javascript", "react"]):
+    elif any(word in profile_lower for word in ["ai", "ml", "machine learning", "deep learning", "artificial intelligence"]):
+        return {
+            "career_role": "AI/ML Engineer",
+            "summary": "AI/ML Engineering is at the forefront of technology. Your interest in AI makes this an exciting and high-paying career path.",
+            "roadmap": [
+                {"step_name": "Step 1: Python & Math Foundations", "official_docs_url": "https://docs.python.org/3/tutorial/", "paid_course_recommendation": "Python for Data Science and Machine Learning Bootcamp by Jose Portilla on Udemy", "youtube_search_query": "Python for machine learning complete course 2024"},
+                {"step_name": "Step 2: Machine Learning Fundamentals", "official_docs_url": "https://scikit-learn.org/stable/user_guide.html", "paid_course_recommendation": "Machine Learning A-Z by Kirill Eremenko on Udemy", "youtube_search_query": "Machine learning full course beginners freeCodeCamp"},
+                {"step_name": "Step 3: Deep Learning & Neural Networks", "official_docs_url": "https://www.tensorflow.org/tutorials", "paid_course_recommendation": "Deep Learning Specialization by Andrew Ng on Coursera", "youtube_search_query": "Deep learning complete course neural networks"},
+                {"step_name": "Step 4: Natural Language Processing", "official_docs_url": "https://huggingface.co/docs", "paid_course_recommendation": "NLP with Transformers by Hugging Face on Coursera", "youtube_search_query": "NLP natural language processing complete course"},
+                {"step_name": "Step 5: Computer Vision", "official_docs_url": "https://pytorch.org/tutorials/", "paid_course_recommendation": "PyTorch for Deep Learning by Daniel Bourke on Udemy", "youtube_search_query": "Computer vision deep learning complete course"},
+                {"step_name": "Step 6: MLOps & Interview Prep", "official_docs_url": "https://mlflow.org/docs/latest/index.html", "paid_course_recommendation": "MLOps Specialization by DeepLearning.AI on Coursera", "youtube_search_query": "AI ML engineer interview preparation projects"}
+            ]
+        }
+    elif any(word in profile_lower for word in ["web", "frontend", "html", "css", "javascript", "react", "ui", "ux"]):
         return {
             "career_role": "Frontend Developer",
             "summary": "Frontend Development is creative and highly in-demand. Your web skills provide a strong foundation for building modern user interfaces.",
@@ -81,6 +113,32 @@ def get_fallback_roadmap(user_profile: str) -> dict:
                 {"step_name": "Step 4: Tailwind CSS & Modern Styling", "official_docs_url": "https://tailwindcss.com/docs", "paid_course_recommendation": "Tailwind CSS From Scratch by Brad Traversy on Udemy", "youtube_search_query": "Tailwind CSS complete course tutorial 2024"},
                 {"step_name": "Step 5: TypeScript & Next.js", "official_docs_url": "https://nextjs.org/docs", "paid_course_recommendation": "Next.js 14 & React - The Complete Guide by Maximilian Schwarzmuller on Udemy", "youtube_search_query": "Next.js 14 complete course TypeScript tutorial"},
                 {"step_name": "Step 6: Testing & Interview Prep", "official_docs_url": "https://testing-library.com/docs/", "paid_course_recommendation": "React Testing Library and Jest by Stephen Grider on Udemy", "youtube_search_query": "Frontend developer interview preparation JavaScript React"}
+            ]
+        }
+    elif any(word in profile_lower for word in ["cloud", "aws", "azure", "devops", "kubernetes", "docker"]):
+        return {
+            "career_role": "Cloud/DevOps Engineer",
+            "summary": "Cloud and DevOps skills are essential in modern tech. Your interest in infrastructure makes this a high-demand, well-paying career.",
+            "roadmap": [
+                {"step_name": "Step 1: Linux & Networking Basics", "official_docs_url": "https://linuxjourney.com/", "paid_course_recommendation": "Linux Mastery by Ziyad Yehia on Udemy", "youtube_search_query": "Linux complete course for beginners 2024"},
+                {"step_name": "Step 2: AWS Cloud Fundamentals", "official_docs_url": "https://docs.aws.amazon.com/", "paid_course_recommendation": "AWS Certified Solutions Architect by Stephane Maarek on Udemy", "youtube_search_query": "AWS complete course beginners to advanced"},
+                {"step_name": "Step 3: Docker Containerization", "official_docs_url": "https://docs.docker.com/get-started/", "paid_course_recommendation": "Docker and Kubernetes: The Complete Guide by Stephen Grider on Udemy", "youtube_search_query": "Docker complete course tutorial 2024"},
+                {"step_name": "Step 4: Kubernetes Orchestration", "official_docs_url": "https://kubernetes.io/docs/home/", "paid_course_recommendation": "Kubernetes for Developers by Mumshad Mannambeth on Udemy", "youtube_search_query": "Kubernetes complete course beginners"},
+                {"step_name": "Step 5: CI/CD & Infrastructure as Code", "official_docs_url": "https://www.terraform.io/docs", "paid_course_recommendation": "Terraform for AWS by Zeal Vora on Udemy", "youtube_search_query": "CI CD pipeline complete course Jenkins GitHub Actions"},
+                {"step_name": "Step 6: Monitoring & Interview Prep", "official_docs_url": "https://prometheus.io/docs/", "paid_course_recommendation": "DevOps Beginners to Advanced by Imran Teli on Udemy", "youtube_search_query": "DevOps engineer interview preparation projects"}
+            ]
+        }
+    elif any(word in profile_lower for word in ["cyber", "security", "hacking", "penetration", "network security"]):
+        return {
+            "career_role": "Cybersecurity Analyst",
+            "summary": "Cybersecurity is critical in today's digital world. Your interest in security makes this a rewarding and in-demand career.",
+            "roadmap": [
+                {"step_name": "Step 1: Networking Fundamentals", "official_docs_url": "https://www.cisco.com/c/en/us/training-events/training-certifications/certifications/associate/ccna.html", "paid_course_recommendation": "CompTIA Network+ by Mike Meyers on Udemy", "youtube_search_query": "Networking fundamentals complete course 2024"},
+                {"step_name": "Step 2: Linux & System Administration", "official_docs_url": "https://linuxjourney.com/", "paid_course_recommendation": "Linux for Cybersecurity by Jason Dion on Udemy", "youtube_search_query": "Linux for cybersecurity complete course"},
+                {"step_name": "Step 3: Security Fundamentals (CompTIA Security+)", "official_docs_url": "https://www.comptia.org/certifications/security", "paid_course_recommendation": "CompTIA Security+ by Jason Dion on Udemy", "youtube_search_query": "CompTIA Security+ complete course 2024"},
+                {"step_name": "Step 4: Ethical Hacking & Penetration Testing", "official_docs_url": "https://www.kali.org/docs/", "paid_course_recommendation": "Learn Ethical Hacking From Scratch by Zaid Sabih on Udemy", "youtube_search_query": "Ethical hacking complete course beginners"},
+                {"step_name": "Step 5: Security Tools & SIEM", "official_docs_url": "https://www.splunk.com/en_us/training.html", "paid_course_recommendation": "Splunk Fundamentals by Splunk on Coursera", "youtube_search_query": "SIEM security tools complete course"},
+                {"step_name": "Step 6: Incident Response & Interview Prep", "official_docs_url": None, "paid_course_recommendation": "Cybersecurity Career Path by StationX on Udemy", "youtube_search_query": "Cybersecurity analyst interview preparation"}
             ]
         }
     else:
@@ -96,65 +154,3 @@ def get_fallback_roadmap(user_profile: str) -> dict:
                 {"step_name": "Step 6: System Design & Interview Prep", "official_docs_url": None, "paid_course_recommendation": "Master the Coding Interview by Andrei Neagoie on Udemy", "youtube_search_query": "Full stack developer interview preparation system design"}
             ]
         }
-
-
-def generate_quiz(topic: str, step_name: str) -> dict:
-    """
-    Generate a quiz with 10 multiple choice questions for a learning step.
-    """
-    prompt = f"""You are a quiz generator for Career Forge learning platform.
-
-Generate exactly 10 multiple choice questions to test knowledge of: {step_name}
-Topic area: {topic}
-
-RULES:
-1. Questions should test practical understanding, not just memorization
-2. Each question must have exactly 4 options (A, B, C, D)
-3. Only ONE option should be correct
-4. Include a brief explanation for the correct answer
-5. Mix difficulty: 4 easy, 4 medium, 2 hard questions
-
-Respond with RAW JSON only. No markdown, no code blocks.
-
-{{"questions": [{{"id": 1,"question": "Question text here?","options": {{"A": "Option A text","B": "Option B text","C": "Option C text","D": "Option D text"}},"correct": "A","explanation": "Brief explanation why A is correct","difficulty": "easy"}},{{"id": 2,"question": "Second question?","options": {{"A": "Option A","B": "Option B","C": "Option C","D": "Option D"}},"correct": "B","explanation": "Explanation here","difficulty": "medium"}}]}}
-
-Generate all 10 questions following this exact format."""
-
-    try:
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
-        
-        # Clean markdown formatting if present
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]
-        if response_text.startswith("```"):
-            response_text = response_text[3:]
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]
-        
-        response_text = response_text.strip()
-        return json.loads(response_text)
-    
-    except json.JSONDecodeError:
-        return get_fallback_quiz(topic)
-    except Exception as e:
-        print(f"Quiz generation error: {e}")
-        return get_fallback_quiz(topic)
-
-
-def get_fallback_quiz(topic: str) -> dict:
-    """Return fallback quiz when API fails."""
-    return {
-        "questions": [
-            {"id": 1, "question": f"What is the primary purpose of learning {topic}?", "options": {"A": "To build practical skills", "B": "Just for fun", "C": "No real purpose", "D": "To waste time"}, "correct": "A", "explanation": "Learning any technical skill is primarily about building practical, applicable skills.", "difficulty": "easy"},
-            {"id": 2, "question": "Which approach is best for learning new technical concepts?", "options": {"A": "Only reading theory", "B": "Hands-on practice with projects", "C": "Watching without practicing", "D": "Memorizing everything"}, "correct": "B", "explanation": "Hands-on practice with real projects is the most effective way to learn technical skills.", "difficulty": "easy"},
-            {"id": 3, "question": "What should you do when you encounter an error while coding?", "options": {"A": "Give up immediately", "B": "Read the error message and debug", "C": "Ignore it", "D": "Delete all code"}, "correct": "B", "explanation": "Reading error messages carefully and debugging is essential for problem-solving.", "difficulty": "easy"},
-            {"id": 4, "question": "Why is documentation important in programming?", "options": {"A": "It's not important", "B": "Only for beginners", "C": "Helps understand APIs and features", "D": "Just for decoration"}, "correct": "C", "explanation": "Documentation is crucial for understanding how to use libraries, APIs, and language features correctly.", "difficulty": "easy"},
-            {"id": 5, "question": "What is the benefit of version control systems like Git?", "options": {"A": "Makes code run faster", "B": "Tracks changes and enables collaboration", "C": "Automatically fixes bugs", "D": "Not useful for developers"}, "correct": "B", "explanation": "Git tracks code changes over time and enables team collaboration effectively.", "difficulty": "medium"},
-            {"id": 6, "question": "Which is a good practice when writing code?", "options": {"A": "Write everything in one file", "B": "Use meaningful variable names", "C": "Never add comments", "D": "Copy-paste without understanding"}, "correct": "B", "explanation": "Meaningful variable names make code readable and maintainable.", "difficulty": "medium"},
-            {"id": 7, "question": "What is debugging?", "options": {"A": "Adding new features", "B": "Finding and fixing errors in code", "C": "Deleting code", "D": "Writing documentation"}, "correct": "B", "explanation": "Debugging is the process of identifying and resolving errors or bugs in code.", "difficulty": "medium"},
-            {"id": 8, "question": "Why should you break down large problems into smaller parts?", "options": {"A": "It's not necessary", "B": "Makes problems easier to solve", "C": "Takes more time", "D": "Only experts do this"}, "correct": "B", "explanation": "Breaking down problems makes them more manageable and easier to solve step by step.", "difficulty": "medium"},
-            {"id": 9, "question": "What is the importance of testing your code?", "options": {"A": "Wastes time", "B": "Ensures code works correctly", "C": "Not needed for small projects", "D": "Only for production"}, "correct": "B", "explanation": "Testing ensures your code works as expected and helps catch bugs early.", "difficulty": "hard"},
-            {"id": 10, "question": "What makes a developer stand out in their career?", "options": {"A": "Only technical skills", "B": "Continuous learning and problem-solving", "C": "Working alone always", "D": "Avoiding challenges"}, "correct": "B", "explanation": "Continuous learning, adaptability, and strong problem-solving skills are key to career growth.", "difficulty": "hard"}
-        ]
-    }
