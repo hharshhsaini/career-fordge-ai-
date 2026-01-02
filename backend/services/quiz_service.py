@@ -1,20 +1,29 @@
 import os
 import json
-from openai import OpenAI
+from openai import AzureOpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    print("WARNING: OPENAI_API_KEY not set!")
+# DeepSeek on Azure configuration
+DEEPSEEK_ENDPOINT = os.getenv("DEEPSEEK_ENDPOINT", "https://career-fordge-resource.cognitiveservices.azure.com/")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_DEPLOYMENT = os.getenv("DEEPSEEK_DEPLOYMENT", "DeepSeek-V3.2")
+DEEPSEEK_API_VERSION = os.getenv("DEEPSEEK_API_VERSION", "2024-05-01-preview")
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+if not DEEPSEEK_API_KEY:
+    print("WARNING: DEEPSEEK_API_KEY not set!")
+
+client = AzureOpenAI(
+    azure_endpoint=DEEPSEEK_ENDPOINT,
+    api_key=DEEPSEEK_API_KEY,
+    api_version=DEEPSEEK_API_VERSION
+)
 
 
 def generate_quiz_openai(topic: str, step_name: str) -> dict:
     """
-    Generate a technical quiz with coding and concept questions using OpenAI.
+    Generate a technical quiz with coding and concept questions using DeepSeek on Azure.
     """
     prompt = f"""You are a technical interview quiz generator for developers.
 
@@ -51,12 +60,11 @@ Generate exactly 15 technical questions."""
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=DEEPSEEK_DEPLOYMENT,
             messages=[
                 {"role": "system", "content": "You are a senior technical interviewer. Generate challenging, real-world technical questions that test actual coding knowledge and concepts. Always include code snippets where relevant. Respond with valid JSON only."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.8,
             max_tokens=4000
         )
         
@@ -83,6 +91,5 @@ Generate exactly 15 technical questions."""
         print(f"JSON decode error: {e}")
         return {"error": f"Failed to parse quiz response. Please try again."}
     except Exception as e:
-        print(f"OpenAI quiz generation error: {e}")
+        print(f"DeepSeek quiz generation error: {e}")
         return {"error": f"Quiz service error: {str(e)}. Please try again later."}
-
