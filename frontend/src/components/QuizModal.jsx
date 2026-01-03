@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { X, CheckCircle2, XCircle, Trophy, RotateCcw, Loader2, ChevronRight, Eye } from 'lucide-react';
 
 export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComplete }) {
@@ -9,32 +9,75 @@ export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComp
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showReview, setShowReview] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingRef = useRef(false);
 
+  const getApiUrl = () => {
+    return window.location.hostname === 'localhost' 
+      ? 'http://localhost:8000' 
+      : 'https://career-fordge-ai.onrender.com';
+  };
+
+  // Load first 5 questions fast, then load rest in background
   const fetchQuiz = async () => {
     setIsLoading(true);
     setError(null);
+    setQuestions([]);
+    
     try {
-      // Use localhost for development, Render for production
-      const apiUrl = window.location.hostname === 'localhost' 
-        ? 'http://localhost:8000' 
-        : 'https://career-fordge-ai.onrender.com';
+      const apiUrl = getApiUrl();
       
-      const response = await fetch(`${apiUrl}/generate-quiz`, {
+      // Load first batch (5 questions) - show immediately
+      const firstBatch = await fetch(`${apiUrl}/generate-quiz-batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, step_name: stepName }),
+        body: JSON.stringify({ topic, step_name: stepName, count: 5, start_id: 1 }),
       });
-      if (!response.ok) throw new Error('Failed to generate quiz');
-      const data = await response.json();
-      setQuestions(data.questions || []);
+      
+      if (!firstBatch.ok) throw new Error('Failed to generate quiz');
+      const firstData = await firstBatch.json();
+      
+      if (!firstData.questions?.length) throw new Error('No questions generated');
+      
+      setQuestions(firstData.questions);
       setCurrentQuestion(0);
       setSelectedAnswers({});
       setShowResults(false);
       setShowReview(false);
+      setIsLoading(false);
+      
+      // Load remaining questions in background
+      loadingRef.current = true;
+      setLoadingMore(true);
+      
+      const secondBatch = await fetch(`${apiUrl}/generate-quiz-batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, step_name: stepName, count: 5, start_id: 6 }),
+      });
+      const secondData = await secondBatch.json();
+      
+      const thirdBatch = await fetch(`${apiUrl}/generate-quiz-batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, step_name: stepName, count: 5, start_id: 11 }),
+      });
+      const thirdData = await thirdBatch.json();
+      
+      // Combine all questions
+      setQuestions(prev => [
+        ...prev,
+        ...(secondData.questions || []),
+        ...(thirdData.questions || [])
+      ]);
+      
+      setLoadingMore(false);
+      loadingRef.current = false;
+      
     } catch (err) {
       setError(err.message);
-    } finally {
       setIsLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -49,7 +92,7 @@ export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComp
   const handleNext = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
-    } else {
+    } else if (!loadingMore) {
       setShowResults(true);
     }
   };
@@ -82,6 +125,8 @@ export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComp
   const score = showResults ? calculateScore() : null;
   const passed = score?.percentage >= 80;
   const currentQ = questions[currentQuestion];
+  const isLastQuestion = currentQuestion >= questions.length - 1;
+  const waitingForMore = isLastQuestion && loadingMore;
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -98,7 +143,7 @@ export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComp
         </div>
 
         <div className="p-6">
-          {/* Initial State - Start Quiz */}
+          {/* Initial State */}
           {questions.length === 0 && !isLoading && !error && (
             <div className="text-center py-8">
               <div className="w-20 h-20 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -126,7 +171,7 @@ export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComp
           {isLoading && (
             <div className="text-center py-12">
               <Loader2 className="w-12 h-12 text-purple-400 animate-spin mx-auto mb-4" />
-              <p className="text-purple-300">Generating your personalized quiz...</p>
+              <p className="text-purple-300">Loading questions...</p>
             </div>
           )}
 
@@ -147,7 +192,7 @@ export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComp
               {/* Progress */}
               <div className="mb-6">
                 <div className="flex justify-between text-sm text-purple-300 mb-2">
-                  <span>Question {currentQuestion + 1} of {questions.length}</span>
+                  <span>Question {currentQuestion + 1} of {loadingMore ? '15' : questions.length}</span>
                   <span className={`px-2 py-0.5 rounded text-xs ${
                     currentQ.difficulty === 'easy' ? 'bg-green-500/20 text-green-300' :
                     currentQ.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
@@ -157,13 +202,13 @@ export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComp
                 <div className="w-full bg-white/10 rounded-full h-2">
                   <div 
                     className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full transition-all"
-                    style={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
+                    style={{ width: `${((currentQuestion + 1) / (loadingMore ? 15 : questions.length)) * 100}%` }}
                   ></div>
                 </div>
               </div>
 
               {/* Question */}
-              <h3 className="text-lg font-medium text-white mb-4">{currentQ.question}</h3>
+              <h3 className="text-lg font-medium text-white mb-4 whitespace-pre-wrap">{currentQ.question}</h3>
 
               {/* Options */}
               <div className="space-y-3 mb-6">
@@ -186,11 +231,19 @@ export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComp
               {/* Next Button */}
               <button
                 onClick={handleNext}
-                disabled={!selectedAnswers[currentQ.id]}
+                disabled={!selectedAnswers[currentQ.id] || waitingForMore}
                 className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
               >
-                {currentQuestion < questions.length - 1 ? 'Next Question' : 'See Results'}
-                <ChevronRight className="w-5 h-5" />
+                {waitingForMore ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Loading more questions...
+                  </>
+                ) : isLastQuestion ? (
+                  'See Results'
+                ) : (
+                  <>Next Question <ChevronRight className="w-5 h-5" /></>
+                )}
               </button>
             </div>
           )}
@@ -201,89 +254,54 @@ export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComp
               <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${
                 passed ? 'bg-green-500/20' : 'bg-red-500/20'
               }`}>
-                {passed ? (
-                  <Trophy className="w-12 h-12 text-green-400" />
-                ) : (
-                  <XCircle className="w-12 h-12 text-red-400" />
-                )}
+                {passed ? <Trophy className="w-12 h-12 text-green-400" /> : <XCircle className="w-12 h-12 text-red-400" />}
               </div>
               
               <h3 className={`text-3xl font-bold mb-2 ${passed ? 'text-green-400' : 'text-red-400'}`}>
                 {score.percentage}%
               </h3>
-              <p className="text-white text-lg mb-1">
-                {score.correct} out of {score.total} correct
-              </p>
+              <p className="text-white text-lg mb-1">{score.correct} out of {score.total} correct</p>
               <p className={`text-sm mb-6 ${passed ? 'text-green-300' : 'text-red-300'}`}>
                 {passed ? '🎉 Congratulations! You passed!' : '😔 You need 80% to pass. Try again!'}
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button
-                  onClick={() => setShowReview(true)}
-                  className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2"
-                >
-                  <Eye className="w-5 h-5" />
-                  Review Answers
+                <button onClick={() => setShowReview(true)} className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2">
+                  <Eye className="w-5 h-5" /> Review Answers
                 </button>
                 {passed ? (
-                  <button
-                    onClick={handleComplete}
-                    className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle2 className="w-5 h-5" />
-                    Mark Step Complete
+                  <button onClick={handleComplete} className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" /> Mark Step Complete
                   </button>
                 ) : (
-                  <button
-                    onClick={handleRetry}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-                  >
-                    <RotateCcw className="w-5 h-5" />
-                    Try Again
+                  <button onClick={handleRetry} className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
+                    <RotateCcw className="w-5 h-5" /> Try Again
                   </button>
                 )}
               </div>
             </div>
           )}
 
-          {/* Review Answers */}
+          {/* Review */}
           {showReview && (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Answer Review</h3>
-                <button
-                  onClick={() => setShowReview(false)}
-                  className="text-purple-300 hover:text-white text-sm"
-                >
-                  Back to Results
-                </button>
+                <button onClick={() => setShowReview(false)} className="text-purple-300 hover:text-white text-sm">Back to Results</button>
               </div>
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                 {questions.map((q, idx) => {
                   const userAnswer = selectedAnswers[q.id];
                   const isCorrect = userAnswer === q.correct;
                   return (
-                    <div key={q.id} className={`p-4 rounded-xl border ${
-                      isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
-                    }`}>
+                    <div key={q.id} className={`p-4 rounded-xl border ${isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
                       <div className="flex items-start gap-2 mb-2">
-                        {isCorrect ? (
-                          <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                        )}
+                        {isCorrect ? <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" /> : <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />}
                         <p className="text-white font-medium">{idx + 1}. {q.question}</p>
                       </div>
                       <div className="ml-7 space-y-1 text-sm">
-                        <p className="text-purple-300">
-                          Your answer: <span className={isCorrect ? 'text-green-400' : 'text-red-400'}>{userAnswer}. {q.options[userAnswer]}</span>
-                        </p>
-                        {!isCorrect && (
-                          <p className="text-green-400">
-                            Correct: {q.correct}. {q.options[q.correct]}
-                          </p>
-                        )}
+                        <p className="text-purple-300">Your answer: <span className={isCorrect ? 'text-green-400' : 'text-red-400'}>{userAnswer}. {q.options[userAnswer]}</span></p>
+                        {!isCorrect && <p className="text-green-400">Correct: {q.correct}. {q.options[q.correct]}</p>}
                         <p className="text-purple-400 mt-2 italic">💡 {q.explanation}</p>
                       </div>
                     </div>
@@ -292,19 +310,9 @@ export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComp
               </div>
               <div className="mt-4 pt-4 border-t border-purple-500/20 flex justify-center gap-3">
                 {passed ? (
-                  <button
-                    onClick={handleComplete}
-                    className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all"
-                  >
-                    Mark Step Complete
-                  </button>
+                  <button onClick={handleComplete} className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all">Mark Step Complete</button>
                 ) : (
-                  <button
-                    onClick={handleRetry}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all"
-                  >
-                    Try Again
-                  </button>
+                  <button onClick={handleRetry} className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all">Try Again</button>
                 )}
               </div>
             </div>

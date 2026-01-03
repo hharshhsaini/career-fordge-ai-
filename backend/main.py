@@ -2,14 +2,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ai_service import generate_precision_roadmap
-from services.quiz_service import generate_quiz_openai
+from services.quiz_service import generate_quiz_openai, generate_quiz_batch
 from services.youtube_service import get_curated_videos
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 app = FastAPI(title="Career Forge API", version="2.0.0")
 
-# Thread pool for parallel execution - more workers for speed
+# Thread pool for parallel execution
 executor = ThreadPoolExecutor(max_workers=12)
 
 # CORS middleware
@@ -29,6 +29,13 @@ class UserProfile(BaseModel):
 class QuizRequest(BaseModel):
     topic: str
     step_name: str
+
+
+class QuizBatchRequest(BaseModel):
+    topic: str
+    step_name: str
+    count: int = 5
+    start_id: int = 1
 
 
 @app.get("/")
@@ -69,13 +76,21 @@ async def generate_path(profile: UserProfile):
 
 @app.post("/generate-quiz")
 async def generate_quiz_endpoint(request: QuizRequest):
-    """
-    Generate quiz - runs in thread pool for non-blocking.
-    """
+    """Generate full quiz (15 questions)."""
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(executor, generate_quiz_openai, request.topic, request.step_name)
     
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
     
+    return result
+
+
+@app.post("/generate-quiz-batch")
+async def generate_quiz_batch_endpoint(request: QuizBatchRequest):
+    """Generate batch of questions (for progressive loading)."""
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        executor, generate_quiz_batch, request.topic, request.step_name, request.count, request.start_id
+    )
     return result

@@ -21,30 +21,53 @@ client = AzureOpenAI(
 )
 
 
-def generate_quiz_openai(topic: str, step_name: str) -> dict:
-    """
-    Generate a technical quiz using GPT-4.1-nano on Azure (fast).
-    """
-    prompt = f"""Generate 15 technical MCQ for: {step_name} ({topic})
-
-Rules: 4 options each, 1 correct, include code snippets, mix easy/medium/hard
-
-JSON only:
-{{"questions":[{{"id":1,"question":"Q?","options":{{"A":"","B":"","C":"","D":""}},"correct":"A","explanation":"Why","difficulty":"easy"}}]}}"""
+def generate_quiz_batch(topic: str, step_name: str, count: int, start_id: int = 1) -> dict:
+    """Generate a batch of quiz questions."""
+    prompt = f"""Generate {count} technical MCQ for: {step_name} ({topic})
+Start id from {start_id}. 4 options, 1 correct, code snippets, mix difficulty.
+JSON only: {{"questions":[{{"id":{start_id},"question":"Q?","options":{{"A":"","B":"","C":"","D":""}},"correct":"A","explanation":"Why","difficulty":"easy"}}]}}"""
 
     try:
         response = client.chat.completions.create(
             model=QUIZ_DEPLOYMENT,
             messages=[
-                {"role": "system", "content": "Technical quiz generator. JSON only."},
+                {"role": "system", "content": "Quiz generator. JSON only."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=3000
+            max_tokens=1500 if count <= 5 else 3000
         )
         
         response_text = response.choices[0].message.content.strip()
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
         
-        # Clean markdown formatting
+        result = json.loads(response_text.strip())
+        return result if "questions" in result else {"questions": []}
+    except:
+        return {"questions": []}
+
+
+def generate_quiz_openai(topic: str, step_name: str) -> dict:
+    """Generate full 15 question quiz."""
+    prompt = f"""Generate 15 technical MCQ for: {step_name} ({topic})
+4 options each, 1 correct, code snippets, mix easy/medium/hard.
+JSON: {{"questions":[{{"id":1,"question":"Q?","options":{{"A":"","B":"","C":"","D":""}},"correct":"A","explanation":"Why","difficulty":"easy"}}]}}"""
+
+    try:
+        response = client.chat.completions.create(
+            model=QUIZ_DEPLOYMENT,
+            messages=[
+                {"role": "system", "content": "Quiz generator. JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=4000
+        )
+        
+        response_text = response.choices[0].message.content.strip()
         if response_text.startswith("```json"):
             response_text = response_text[7:]
         if response_text.startswith("```"):
@@ -56,12 +79,9 @@ JSON only:
         
         if "questions" in result and len(result["questions"]) > 0:
             return result
-        else:
-            return {"error": "Failed to generate quiz questions. Please try again."}
+        return {"error": "Failed to generate quiz. Please try again."}
     
-    except json.JSONDecodeError as e:
-        print(f"JSON decode error: {e}")
+    except json.JSONDecodeError:
         return {"error": "Failed to parse quiz response. Please try again."}
     except Exception as e:
-        print(f"Quiz generation error: {e}")
-        return {"error": f"Quiz service error: {str(e)}. Please try again later."}
+        return {"error": f"Quiz error: {str(e)}"}
