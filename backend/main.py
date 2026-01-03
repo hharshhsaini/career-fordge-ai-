@@ -9,13 +9,13 @@ from concurrent.futures import ThreadPoolExecutor
 
 app = FastAPI(title="Career Forge API", version="2.0.0")
 
-# Thread pool for parallel YouTube searches
-executor = ThreadPoolExecutor(max_workers=6)
+# Thread pool for parallel execution - more workers for speed
+executor = ThreadPoolExecutor(max_workers=12)
 
-# CORS middleware - allowing frontend origins
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://*.netlify.app", "*"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,20 +39,19 @@ async def root():
 @app.post("/generate-path")
 async def generate_path(profile: UserProfile):
     """
-    Generate a precision career path with curated resources.
+    Generate career path - AI roadmap + parallel YouTube searches.
     """
-    # Generate career roadmap from AI
-    result = generate_precision_roadmap(profile.description)
+    loop = asyncio.get_event_loop()
+    
+    # Run AI generation in thread pool
+    result = await loop.run_in_executor(executor, generate_precision_roadmap, profile.description)
 
-    # Check for errors
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
     
-    # Fetch YouTube videos in PARALLEL for all steps
-    loop = asyncio.get_event_loop()
     roadmap = result.get("roadmap", [])
-
-    # Create tasks for all YouTube searches
+    
+    # Fetch ALL YouTube videos in parallel (6 searches at once)
     async def fetch_videos(step):
         query = step.get("youtube_search_query")
         if query:
@@ -62,7 +61,7 @@ async def generate_path(profile: UserProfile):
             step["video_results"] = []
         return step
     
-    # Run all YouTube fetches in parallel
+    # All 6 YouTube searches run simultaneously
     await asyncio.gather(*[fetch_videos(step) for step in roadmap])
     
     return result
@@ -71,9 +70,10 @@ async def generate_path(profile: UserProfile):
 @app.post("/generate-quiz")
 async def generate_quiz_endpoint(request: QuizRequest):
     """
-    Generate a quiz for a specific learning step using OpenAI.
+    Generate quiz - runs in thread pool for non-blocking.
     """
-    result = generate_quiz_openai(request.topic, request.step_name)
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(executor, generate_quiz_openai, request.topic, request.step_name)
     
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])

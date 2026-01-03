@@ -25,26 +25,21 @@ def generate_quiz_openai(topic: str, step_name: str) -> dict:
     """
     Generate a technical quiz using GPT-4.1-nano on Azure (fast).
     """
-    prompt = f"""Generate 15 technical MCQ questions for: {step_name}
-Topic: {topic}
+    prompt = f"""Generate 15 technical MCQ for: {step_name} ({topic})
 
-Requirements:
-- Include code output, concept, debugging, and comparison questions
-- 4 options (A,B,C,D) per question, only 1 correct
-- Mix: 5 easy, 6 medium, 4 hard
-- Include code snippets where relevant
+Rules: 4 options each, 1 correct, include code snippets, mix easy/medium/hard
 
-Return JSON only:
-{{"questions":[{{"id":1,"question":"Question?","options":{{"A":"","B":"","C":"","D":""}},"correct":"A","explanation":"Why","difficulty":"easy"}}]}}"""
+JSON only:
+{{"questions":[{{"id":1,"question":"Q?","options":{{"A":"","B":"","C":"","D":""}},"correct":"A","explanation":"Why","difficulty":"easy"}}]}}"""
 
     try:
         response = client.chat.completions.create(
             model=QUIZ_DEPLOYMENT,
             messages=[
-                {"role": "system", "content": "Technical quiz generator. Return valid JSON only."},
+                {"role": "system", "content": "Technical quiz generator. JSON only."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=4000
+            max_tokens=3000
         )
         
         response_text = response.choices[0].message.content.strip()
