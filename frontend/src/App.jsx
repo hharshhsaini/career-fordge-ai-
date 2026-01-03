@@ -51,7 +51,6 @@ function App() {
         ? 'http://localhost:8000' 
         : 'https://career-fordge-ai.onrender.com';
       
-      // Get roadmap fast (no YouTube wait)
       const response = await fetch(`${apiUrl}/generate-path`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,40 +61,15 @@ function App() {
 
       const data = await response.json();
       setResult(data);
-      setIsLoading(false);
       
       // Initialize progress
       const careerKey = data.career_role?.replace(/\s+/g, '_').toLowerCase();
       if (careerKey && !completedSteps[careerKey]) {
         setCompletedSteps(prev => ({ ...prev, [careerKey]: [] }));
       }
-
-      // Load YouTube videos in background for each step
-      data.roadmap?.forEach(async (step, index) => {
-        if (step.youtube_search_query) {
-          try {
-            const videoRes = await fetch(`${apiUrl}/fetch-videos`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ description: step.youtube_search_query }),
-            });
-            const videoData = await videoRes.json();
-            
-            // Update result with videos
-            setResult(prev => {
-              if (!prev) return prev;
-              const newRoadmap = [...prev.roadmap];
-              newRoadmap[index] = { ...newRoadmap[index], video_results: videoData.videos || [] };
-              return { ...prev, roadmap: newRoadmap };
-            });
-          } catch (e) {
-            console.log('Video fetch failed for step', index);
-          }
-        }
-      });
-
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };
