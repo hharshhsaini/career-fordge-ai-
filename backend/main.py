@@ -45,33 +45,28 @@ async def root():
 
 @app.post("/generate-path")
 async def generate_path(profile: UserProfile):
-    """
-    Generate career path - AI roadmap + parallel YouTube searches.
-    """
+    """Generate career roadmap (fast, no YouTube wait)."""
     loop = asyncio.get_event_loop()
     
-    # Run AI generation in thread pool
+    # Generate roadmap with fast model
     result = await loop.run_in_executor(executor, generate_precision_roadmap, profile.description)
 
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
     
-    roadmap = result.get("roadmap", [])
-    
-    # Fetch ALL YouTube videos in parallel (6 searches at once)
-    async def fetch_videos(step):
-        query = step.get("youtube_search_query")
-        if query:
-            videos = await loop.run_in_executor(executor, get_curated_videos, query)
-            step["video_results"] = videos
-        else:
-            step["video_results"] = []
-        return step
-    
-    # All 6 YouTube searches run simultaneously
-    await asyncio.gather(*[fetch_videos(step) for step in roadmap])
+    # Return immediately - frontend will fetch videos separately
+    for step in result.get("roadmap", []):
+        step["video_results"] = []
     
     return result
+
+
+@app.post("/fetch-videos")
+async def fetch_videos_endpoint(profile: UserProfile):
+    """Fetch YouTube videos for a search query."""
+    loop = asyncio.get_event_loop()
+    videos = await loop.run_in_executor(executor, get_curated_videos, profile.description)
+    return {"videos": videos}
 
 
 @app.post("/generate-quiz")
