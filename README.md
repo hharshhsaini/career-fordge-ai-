@@ -145,4 +145,4 @@ This project is licensed under the MIT License.
 
 ---
 
-**Made with ❤️ for Microsoft Imagine Cup 2026**
+Made by Harsh Saini
