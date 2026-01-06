@@ -24,21 +24,19 @@ client = AzureOpenAI(
 def generate_precision_roadmap(user_profile: str) -> dict:
     """Generate career roadmap using fast GPT-4.1-nano."""
     
-    prompt = f"""Career advisor. User: {user_profile}
+    prompt = f"""User: {user_profile}
 
-Generate 6-step career roadmap. JSON only:
-{{"career_role":"Job Title","summary":"Why this career fits","roadmap":[{{"step_name":"Step 1: Topic","official_docs_url":"https://docs.example.com or null","paid_course_recommendation":"Course by Instructor on Udemy/Coursera","youtube_search_query":"topic full course tutorial 2024"}}]}}
-
-Rules: 6 steps (beginner to advanced), real courses, specific youtube queries. Pick BEST career for user skills."""
+Return JSON career roadmap with 6 steps:
+{{"career_role":"Title","summary":"2 sentences","roadmap":[{{"step_name":"Step 1: X","official_docs_url":"url or null","paid_course_recommendation":"Course on Udemy","youtube_search_query":"X tutorial"}}]}}"""
 
     try:
         response = client.chat.completions.create(
             model=AZURE_DEPLOYMENT,
             messages=[
-                {"role": "system", "content": "Career advisor. JSON only. Pick best career for user, not always Full Stack."},
+                {"role": "system", "content": "Career advisor. JSON only."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=2000
+            max_tokens=1500
         )
         
         response_text = response.choices[0].message.content.strip()
