@@ -2,7 +2,7 @@
 
 AI-powered career guidance platform that helps students discover their ideal career path with personalized learning roadmaps.
 
-![Career Forge](careerforge%20icon.png)
+Deployed Link - https://careerfordge.netlify.app/
 
 ## ✨ Features
 
