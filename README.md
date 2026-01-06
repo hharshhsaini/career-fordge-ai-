@@ -1,38 +1,62 @@
-# 🔥 Career Forge - AI Career Navigator
+# 🧭 Career Forge - AI Career Navigator
 
-An intelligent career guidance platform that helps students discover their ideal career path with personalized learning roadmaps and curated resources.
+AI-powered career guidance platform that helps students discover their ideal career path with personalized learning roadmaps.
 
-**Built for Microsoft Imagine Cup 2026**
+![Career Forge](careerforge%20icon.png)
 
-🌐 **Live Demo:** [https://careerfordge.netlify.app](https://careerfordge.netlify.app)
+## ✨ Features
 
-## 🎯 What it Does
-
-Career Forge analyzes your skills, education, and interests using AI to:
-
-- Recommend the best-fit career role with detailed explanation
-- Generate a comprehensive 6-step learning roadmap (Beginner → Advanced)
-- Provide curated, high-quality resources for each step:
-  - ✅ Official documentation links (verified URLs)
-  - ✅ Top-rated paid courses (Udemy/Coursera recommendations)
-  - ✅ Free YouTube video lectures (filtered for long-form content only)
+- **AI-Powered Career Analysis** - GPT-4.1-nano analyzes your skills and interests to recommend the best career path
+- **6-Step Learning Roadmap** - Structured beginner to advanced learning journey
+- **Curated Resources** - Official documentation links, top Udemy/Coursera courses
+- **YouTube Tutorials** - Auto-fetched full course videos (no shorts!)
+- **Knowledge Quizzes** - 15 technical questions per step, 80% pass rate required
+- **Progress Tracking** - Mark completed steps, visualize your journey
+- **PDF Download** - Export your personalized roadmap
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Backend | Python (FastAPI) |
-| Frontend | React (Vite) + Tailwind CSS |
-| AI | Google Gemini API |
-| Data | YouTube Data API v3 |
+**Frontend:**
+- React 18 + Vite
+- Tailwind CSS
+- Lucide Icons
+- jsPDF for PDF generation
 
-## ✨ Key Features
+**Backend:**
+- FastAPI (Python)
+- Azure OpenAI (GPT-4.1-nano)
+- YouTube scraping (no API needed)
 
-- **Quality over Quantity** - Only verified, high-rated resources
-- **Long-form Video Filtering** - Videos >20 minutes to ensure full courses, not clips
-- **Complete Syllabus Coverage** - From fundamentals to interview preparation
-- **Official Docs Priority** - Direct links to official documentation
-- **Smart Fallbacks** - Works even when APIs hit rate limits
+**Deployment:**
+- Frontend: Netlify / Azure Static Web Apps
+- Backend: Render / Azure App Service
+
+## 🚀 Quick Start
+
+### Backend
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Create .env file with:
+# QUIZ_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
+# QUIZ_API_KEY=your_api_key
+# QUIZ_DEPLOYMENT=gpt-4.1-nano
+# QUIZ_API_VERSION=2024-05-01-preview
+
+uvicorn main:app --reload --port 8000
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173
 
 ## 📁 Project Structure
 
@@ -40,109 +64,56 @@ Career Forge analyzes your skills, education, and interests using AI to:
 career-forge/
 ├── backend/
 │   ├── main.py              # FastAPI endpoints
-│   ├── ai_service.py        # Gemini AI integration
-│   ├── youtube_service.py   # YouTube API with quality filters
-│   ├── requirements.txt
-│   └── .env
+│   ├── ai_service.py        # Career roadmap generation
+│   ├── services/
+│   │   ├── quiz_service.py  # Quiz generation
+│   │   └── youtube_service.py # YouTube scraping
+│   └── requirements.txt
 ├── frontend/
-│   └── src/
-│       ├── App.jsx
-│       └── components/
-│           └── RoadmapCard.jsx
+│   ├── src/
+│   │   ├── App.jsx          # Main app
+│   │   └── components/
+│   │       ├── RoadmapCard.jsx
+│   │       ├── QuizModal.jsx
+│   │       ├── ProgressChart.jsx
+│   │       └── LoadingAnimation.jsx
+│   └── public/
+│       └── favicon.png
 └── README.md
 ```
 
-## 🚀 Quick Start
+## 🔑 Environment Variables
 
-### Prerequisites
+### Backend (Render)
+| Variable | Description |
+|----------|-------------|
+| `QUIZ_ENDPOINT` | Azure Cognitive Services endpoint |
+| `QUIZ_API_KEY` | Azure API key |
+| `QUIZ_DEPLOYMENT` | Model deployment name (gpt-4.1-nano) |
+| `QUIZ_API_VERSION` | API version (2024-05-01-preview) |
 
-- Python 3.11+
-- Node.js 18+
-- Google Gemini API Key
-- YouTube Data API Key
+## 🎯 How It Works
 
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/yourusername/career-forge.git
-cd career-forge
-```
-
-### 2. Backend Setup
-
-```bash
-cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env and add your API keys
-```
-
-### 3. Frontend Setup
-
-```bash
-cd frontend
-npm install
-```
-### 5. Run the Application
-
-**Terminal 1 - Backend:**
-```bash
-cd backend
-source venv/bin/activate
-uvicorn main:app --reload
-```
-
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm run dev
-```
-
-Open http://localhost:5173 in your browser.
-
-## 📡 API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Health check |
-| POST | `/generate-path` | Generate career roadmap with curated resources |
-
-### Sample Request
-
-```bash
-curl -X POST http://localhost:8000/generate-path \
-  -H "Content-Type: application/json" \
-  -d '{"description": "I am a BCA student knowing Python and interested in data science"}'
-```
-
-## 🧪 Demo Script
-
-Copy-paste this into the app to test:
-
-```
-I am a 3rd year BCA student. I know Python basics, have done some web development with HTML/CSS, and recently started learning about databases. I'm really interested in data and how companies use it to make decisions.
-```
+1. **User Input** - Describe your background and interests
+2. **AI Analysis** - GPT-4.1-nano generates personalized career recommendation
+3. **Roadmap Generation** - 6-step learning path with resources
+4. **YouTube Fetch** - Scrapes relevant full course tutorials
+5. **Quiz Verification** - Pass 80% to mark step complete
+6. **Progress Tracking** - Saved locally, visualize completion
 
 ## 📸 Screenshots
 
-*Coming soon*
+- 3D Loading Animation while generating
+- Beautiful gradient UI with purple theme
+- Interactive quiz modal with explanations
+- Progress chart visualization
 
-## 🤝 Contributing
+## 👨‍💻 Author
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+**Harsh Saini**
+
+Made with ❤️ for Microsoft Azure Hackathon 2026
 
 ## 📄 License
 
-This project is licensed under the MIT License.
-
----
-
-Made by Harsh Saini
+MIT License
