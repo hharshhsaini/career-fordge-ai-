@@ -47,24 +47,27 @@ export default function QuizModal({ isOpen, onClose, stepName, topic, onQuizComp
       setIsLoading(false);
       
       // Load remaining questions in background
+      // Load remaining questions in parallel (Faster!)
       loadingRef.current = true;
       setLoadingMore(true);
       
-      const secondBatch = await fetch(`${apiUrl}/generate-quiz-batch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, step_name: stepName, count: 5, start_id: 6 }),
-      });
+      const [secondBatch, thirdBatch] = await Promise.all([
+        fetch(`${apiUrl}/generate-quiz-batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic, step_name: stepName, count: 5, start_id: 6 }),
+        }),
+        fetch(`${apiUrl}/generate-quiz-batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic, step_name: stepName, count: 5, start_id: 11 }),
+        })
+      ]);
+
       const secondData = await secondBatch.json();
-      
-      const thirdBatch = await fetch(`${apiUrl}/generate-quiz-batch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, step_name: stepName, count: 5, start_id: 11 }),
-      });
       const thirdData = await thirdBatch.json();
       
-      // Combine all questions
+      // Combine all questions immediately
       setQuestions(prev => [
         ...prev,
         ...(secondData.questions || []),

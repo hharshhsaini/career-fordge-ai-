@@ -19,7 +19,7 @@ def get_simple_roadmap_prompt(user_profile: str, constraints: dict = None) -> st
     if constraints is None:
         constraints = {}
     
-    months = constraints.get("max_months", 3)
+    months = constraints.get("max_months", 6)
     
     prompt = f"""Create a {months}-month career roadmap for:
 "{user_profile}"
