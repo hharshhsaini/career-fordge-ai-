@@ -1,9 +1,53 @@
-fastapi
-uvicorn
-gunicorn
-python-dotenv
-google-genai
-google-api-python-client
-pydantic
-openai
-requests
+# CareerForge AI - Python Dependencies
+# Production-ready requirements for self-hosted LLM backend
+
+# Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+
+# HTTP Client for LLM Service
+httpx>=0.26.0
+
+# Environment Management
+python-dotenv>=1.0.0
+
+# YouTube Scraping
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+
+# Async Support
+aiohttp>=3.9.0
+
+# JSON Handling
+orjson>=3.9.0
+
+# Rate Limiting (optional)
+slowapi>=0.1.9
+
+# Type Hints
+typing-extensions>=4.9.0
+
+
+# ============================================================
+# LEGACY DEPENDENCIES (for backward compatibility)
+# ============================================================
+# These are kept for fallback to paid APIs if needed
+
+# Google Gemini (optional - keep for fallback)
+# google-genai>=0.3.0
+
+# OpenAI (optional - keep for fallback)
+# openai>=1.9.0
+
+
+# ============================================================
+# DEVELOPMENT DEPENDENCIES
+# ============================================================
+# Uncomment for development
+
+# pytest>=7.4.0
+# pytest-asyncio>=0.23.0
+# black>=23.12.0
+# isort>=5.13.0
+# mypy>=1.8.0
