@@ -21,30 +21,34 @@ def get_simple_roadmap_prompt(user_profile: str, constraints: dict = None) -> st
     
     months = constraints.get("max_months", 6)
     
-    prompt = f"""Create a {months}-month career roadmap for:
-"{user_profile}"
+    prompt = f"""You are a career expert. Create a detailed 6-step learning roadmap for: "{user_profile}".
 
-Return JSON:
+You MUST return a JSON object with exactly 6 steps in the "roadmap" array.
+Structure each step exactly like the example below.
+KEEP DESCRIPTIONS SHORT (max 15 words) for speed.
+
+Example JSON Structure:
 {{
-    "career_role": "recommended job title",
-    "summary": "2 sentence overview",
+    "career_role": "Python Developer",
+    "summary": "6-month plan to master Python.",
     "roadmap": [
         {{
-            "step_name": "Month 1: Focus Area",
-            "description": "What to learn and build",
-            "official_docs_url": "URL to official docs",
-            "paid_course_recommendation": "Name of a good course"
-        }}
+            "step_name": "Month 1: Python Basics",
+            "description": "Master variables, loops, functions, and data structures.",
+            "official_docs_url": "https://docs.python.org/3/",
+            "paid_course_recommendation": "Complete Python Bootcamp"
+        }},
+        // ... generate exactly 6 steps
     ]
 }}
 
 Requirements:
-- "roadmap" must be an array of {months} steps
-- Use exactly the keys shown above
-- "step_name" for each month
-- valid URLs for docs
+1. "roadmap" array MUST have exactly 6 items.
+2. "step_name" must start with "Month 1:", "Month 2:", etc.
+3. Content must be specific to the user's goal.
+4. "official_docs_url" must be a real URL.
 
-ONLY return valid JSON, no other text."""
+RETURN ONLY VALID JSON."""
 
     return prompt
 

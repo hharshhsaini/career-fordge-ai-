@@ -37,7 +37,11 @@ class RoadmapService:
         self,
         user_profile: str,
         hours_per_week: int = 15,
-        max_months: int = 3,  # Reduced default for faster generation
+    def generate_roadmap(
+        self,
+        user_profile: str,
+        hours_per_week: int = 15,
+        max_months: int = 6,
         budget: str = "free resources preferred"
     ) -> Dict[str, Any]:
         """Generate a career roadmap optimized for speed."""
@@ -50,7 +54,7 @@ class RoadmapService:
         
         constraints = {
             "hours_per_week": hours_per_week,
-            "max_months": min(max_months, 3),  # Cap at 3 for faster generation
+            "max_months": max_months,
             "budget": budget
         }
         
@@ -65,9 +69,9 @@ class RoadmapService:
         
         response = self.llm.generate(
             prompt=prompt,
-            system_prompt="You are a career advisor. Return only valid JSON, no markdown or extra text.",
-            temperature=0.5,  # Lower temperature for faster, more consistent output
-            max_tokens=1500,  # Limit tokens for faster response
+            system_prompt="You are a career expert. Return only valid JSON.",
+            temperature=0.5,
+            max_tokens=1500,  # Optimized for speed with shorter descriptions
             expect_json=True
         )
         
