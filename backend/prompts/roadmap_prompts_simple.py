@@ -47,6 +47,8 @@ Requirements:
 2. "step_name" must start with "Month 1:", "Month 2:", etc.
 3. Content must be specific to the user's goal.
 4. "official_docs_url" must be a real URL.
+5. Order MUST follow logical dependency (Beginner -> Advanced).
+6. NO FLUFF. Every step must be justifiable and industry-relevant.
 
 RETURN ONLY VALID JSON."""
 
