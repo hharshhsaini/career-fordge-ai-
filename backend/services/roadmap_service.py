@@ -37,10 +37,6 @@ class RoadmapService:
         self,
         user_profile: str,
         hours_per_week: int = 15,
-    def generate_roadmap(
-        self,
-        user_profile: str,
-        hours_per_week: int = 15,
         max_months: int = 6,
         budget: str = "free resources preferred"
     ) -> Dict[str, Any]:
