@@ -54,7 +54,7 @@ Important: Return ONLY the JSON object, no markdown, no extra text."""
             client = genai.Client(api_key=current_key)
             
             response = client.models.generate_content(
-                model="gemini-2.0-flash-exp",
+                model="gemini-1.5-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     max_output_tokens=2000,
