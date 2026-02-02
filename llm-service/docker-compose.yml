@@ -1,0 +1,71 @@
+# CareerForge AI - LLM Service Docker Compose
+# Deploys Ollama for self-hosted LLM inference
+
+version: "3.8"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: careerforge-llm
+    restart: unless-stopped
+    
+    # GPU support - uncomment for NVIDIA GPUs
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    
+    ports:
+      - "11434:11434"
+    
+    volumes:
+      # Persist downloaded models
+      - ollama_data:/root/.ollama
+      # Custom model configurations
+      - ./Modelfile:/Modelfile:ro
+    
+    environment:
+      # Control concurrent requests
+      - OLLAMA_NUM_PARALLEL=4
+      # Set context window size
+      - OLLAMA_CONTEXT_SIZE=32768
+      # Enable debug logging
+      - OLLAMA_DEBUG=0
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Run model pull on startup
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        sleep 10
+        ollama pull mistral:7b-instruct-v0.3-q4_K_M
+        wait
+
+  # Optional: Model preload service (pulls model on startup)
+  model-loader:
+    image: curlimages/curl:latest
+    container_name: careerforge-model-loader
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Ensuring Mistral model is available..."
+        curl -X POST http://ollama:11434/api/pull -d '{"name":"mistral:7b-instruct-v0.3-q4_K_M"}'
+        echo "Model ready!"
+    restart: "no"
+
+volumes:
+  ollama_data:
+    driver: local
