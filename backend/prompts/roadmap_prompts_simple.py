@@ -27,18 +27,22 @@ def get_simple_roadmap_prompt(user_profile: str, constraints: dict = None) -> st
 Return JSON:
 {{
     "career_role": "recommended job title",
-    "overview": "why this fits you",
-    "months": [
+    "summary": "2 sentence overview",
+    "roadmap": [
         {{
-            "month": 1,
-            "title": "Month title",
-            "skills": ["skill1", "skill2"],
-            "project": "one project to build",
-            "goal": "measurable outcome"
+            "step_name": "Month 1: Focus Area",
+            "description": "What to learn and build",
+            "official_docs_url": "URL to official docs",
+            "paid_course_recommendation": "Name of a good course"
         }}
-    ],
-    "resources": ["top 3 learning resources"]
+    ]
 }}
+
+Requirements:
+- "roadmap" must be an array of {months} steps
+- Use exactly the keys shown above
+- "step_name" for each month
+- valid URLs for docs
 
 ONLY return valid JSON, no other text."""
 

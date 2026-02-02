@@ -1,6 +1,7 @@
 """
 CareerForge AI - Quiz Service V2 (Open-Source LLM)
 Generates knowledge assessment quizzes using self-hosted LLMs.
+Optimized for faster responses with smaller models.
 """
 
 import os
@@ -11,8 +12,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from typing import Dict, Any, Optional
 from services.llm_service import LLMService, get_llm_service
-from prompts.system_prompts import CAREERFORGE_SYSTEM_PROMPT, QUIZ_GENERATION_CONTEXT
-from prompts.quiz_prompts import get_quiz_prompt, get_quiz_batch_prompt
+
+# Use simplified prompts for faster responses
+try:
+    from prompts.quiz_prompts_simple import get_simple_quiz_prompt
+    USE_SIMPLE_PROMPTS = True
+except ImportError:
+    from prompts.quiz_prompts import get_quiz_prompt, get_quiz_batch_prompt
+    USE_SIMPLE_PROMPTS = False
+
+print(f"[QuizService] Using {'simple' if USE_SIMPLE_PROMPTS else 'detailed'} prompts")
 
 
 class QuizService:
@@ -67,18 +76,23 @@ class QuizService:
         start_id: int = 1,
         difficulty: str = "mixed"
     ) -> Dict[str, Any]:
-        """Generate a batch of quiz questions."""
+        """Generate a batch of quiz questions optimized for speed."""
         
         if not topic or not step_name:
             return {"error": "Topic and step_name are required"}
         
-        prompt = get_quiz_batch_prompt(topic, step_name, count, start_id, difficulty)
+        # Use simple prompts for faster responses
+        if USE_SIMPLE_PROMPTS:
+            prompt = get_simple_quiz_prompt(topic, step_name, count, start_id)
+        else:
+            from prompts.quiz_prompts import get_quiz_batch_prompt
+            prompt = get_quiz_batch_prompt(topic, step_name, count, start_id, difficulty)
         
         response = self.llm.generate(
             prompt=prompt,
-            system_prompt=CAREERFORGE_SYSTEM_PROMPT,
-            temperature=0.7,
-            max_tokens=2000,
+            system_prompt="You are a quiz generator. Return only valid JSON.",
+            temperature=0.5,
+            max_tokens=1000,  # Reduced for faster responses
             expect_json=True
         )
         
